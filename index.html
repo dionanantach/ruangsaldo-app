@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RuangSaldo</title>
+<meta name="description" content="Pembungkus PWA untuk web app RuangSaldo (Google Apps Script).">
+<meta name="theme-color" content="#eef2f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f171b" media="(prefers-color-scheme: dark)">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script>
+  // Warna latar sebelum tergambar: tema terakhir yang dilaporkan aplikasi, lalu tema sistem.
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('rs-shell-theme'); } catch (e) {}
+    if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<style>
+  :root { --bg: #eef2f5; --ink: #13252e; --ink-2: #5d6b73; --panel: #ffffff; --accent: #176b87; --on-accent: #ffffff; color-scheme: light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0f171b; --ink: #e6eef2; --ink-2: #9fb0b8; --panel: #172228; --accent: #4fb0cf; --on-accent: #06222c; color-scheme: dark; }
+  }
+  :root[data-theme="dark"] { --bg: #0f171b; --ink: #e6eef2; --ink-2: #9fb0b8; --panel: #172228; --accent: #4fb0cf; --on-accent: #06222c; color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; font: 15px/1.5 Inter, "Helvetica Neue", Helvetica, Arial, sans-serif; }
+  #app { position: fixed; left: 0; top: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
+  .note { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: 480px; margin: 0 auto;
+    background: var(--panel); border-radius: 18px; padding: 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, .28); z-index: 2; }
+  .note h1 { font-size: 17px; margin: 0 0 6px; }
+  .note p { margin: 0 0 14px; color: var(--ink-2); }
+  .note .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .note a, .note button { border: 0; border-radius: 999px; padding: 10px 16px; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer;
+    background: var(--bg); color: var(--ink); touch-action: manipulation; }
+  .note .primary { background: var(--accent); color: var(--on-accent); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<iframe id="app" title="RuangSaldo" allow="clipboard-write"></iframe>
+
+<div class="note" id="slow" role="status" hidden>
+  <h1>RuangSaldo belum terbuka</h1>
+  <p>Biasanya karena login Google perlu diperbarui, dan halaman login Google tidak bisa tampil di dalam aplikasi ini. Login sekali di tab biasa, lalu kembali ke sini dan muat ulang.</p>
+  <div class="row">
+    <a class="primary" id="open-direct" target="_blank" rel="noopener">Buka &amp; login</a>
+    <button type="button" id="reload">Muat ulang</button>
+    <button type="button" id="dismiss">Tutup</button>
+  </div>
+</div>
+
+<div class="note" id="setup" role="alert" hidden>
+  <h1>URL aplikasi belum diisi</h1>
+  <p>Isi <b>EXEC_URL</b> di file <b>config.js</b> dengan URL deployment web app "Only myself", lalu push ulang ke GitHub.</p>
+</div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  'use strict';
+  var cfg = window.RUANGSALDO || {};
+  var url = String(cfg.EXEC_URL || '');
+  var frame = document.getElementById('app');
+  var slow = document.getElementById('slow');
+
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(url)) {
+    document.getElementById('setup').hidden = false;
+    return;
+  }
+  document.getElementById('open-direct').href = url;
+  frame.src = url;
+
+  // Tampilkan bantuan bila aplikasi tidak memberi tanda "siap" dalam 25 detik.
+  var ready = false;
+  var slowTimer = setTimeout(function () { if (!ready) slow.hidden = false; }, 25000);
+  document.getElementById('reload').onclick = function () { location.reload(); };
+  document.getElementById('dismiss').onclick = function () { slow.hidden = true; };
+
+  /*
+   * Tutup celah di bawah: aplikasi (di dalam halaman Google) melaporkan tingginya. Bila lebih pendek dari
+   * iframe ini, iframe dipanjangkan sebesar selisihnya sehingga menu bawah aplikasi jatuh tepat di dasar layar.
+   * Dibatasi 0–160 px agar tidak pernah memotong menu bila ada yang tidak terduga.
+   */
+  var extra = 0;
+  function fit(appHeight) {
+    if (cfg.AUTO_FIT === false || !appHeight) return;
+    // Celah = tinggi iframe (sudah termasuk tambahan) dikurangi tinggi aplikasi. Tambahan disamakan dengan
+    // celah itu (bukan ditumpuk), jadi stabil walau laporan tinggi datang berkali-kali.
+    var next = Math.max(0, Math.min(160, Math.round(frame.clientHeight - appHeight)));
+    if (Math.abs(next - extra) <= 1) return;
+    extra = next;
+    frame.style.height = 'calc(100% + ' + extra + 'px)';
+  }
+
+  function setTheme(t) {
+    if (t !== 'dark' && t !== 'light') return;
+    document.documentElement.setAttribute('data-theme', t);
+    var color = t === 'dark' ? '#0f171b' : '#eef2f5';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(function (m) { m.setAttribute('content', color); });
+    try { localStorage.setItem('rs-shell-theme', t); } catch (e) {}
+  }
+
+  window.addEventListener('message', function (ev) {
+    // Hanya dari sandbox Apps Script; isi pesan hanya status, tema, dan tinggi (tanpa data keuangan).
+    if (!/^https:\/\/[\w.-]+\.googleusercontent\.com$/.test(ev.origin)) return;
+    var d = ev.data;
+    if (!d || d.ruangsaldo !== 1) return;
+    if (d.ready) { ready = true; clearTimeout(slowTimer); slow.hidden = true; }
+    if (d.theme) setTheme(d.theme);
+    if (d.h) fit(d.h);
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>
