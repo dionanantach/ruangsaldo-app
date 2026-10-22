@@ -5,7 +5,7 @@
  * https://script.google.com/macros/s/AKfy..../exec
  */
 window.RUANGSALDO = {
-  EXEC_URL: 'https://script.google.com/macros/s/AKfycbwJvSOtAasbrBfUtZLmtGjIkqfq3XGHhaz13vnkkesCFWG7tXx_v79fXwjOb8tBLnwgvQ/exec',
+  EXEC_URL: 'https://script.google.com/macros/s/AKfycbxHcS9OVVLHnmf5wpl3-b9eFtEJpzezvA1_6cwbKOLtSGEqLH7xdun3W-IIHm1VQ5jHYg/exec',
   // Tutup otomatis celah di bawah menu yang berasal dari halaman pembungkus Google. false = matikan.
   AUTO_FIT: true
 };
